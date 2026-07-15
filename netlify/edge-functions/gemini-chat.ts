@@ -1,9 +1,15 @@
 import type { Context } from "@netlify/edge-functions";
 
-const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-2.0-flash";
-const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+const GEMINI_MODEL =
+  Netlify.env.get("GEMINI_MODEL") ?? "gemini-2.0-flash";
+
+const GEMINI_API_KEY =
+  Netlify.env.get("GEMINI_API_KEY");
+
 const MAX_HISTORY_MESSAGES = 30;
-const DEBUG_KEY_CHECK = Deno.env.get("DEBUG_GEMINI_KEY") === "true";
+
+const DEBUG_KEY_CHECK =
+  Netlify.env.get("DEBUG_GEMINI_KEY") === "true";
 
 let diagnosticRan = false;
 async function runKeyDiagnosticOnce() {
