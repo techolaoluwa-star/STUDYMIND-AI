@@ -3,6 +3,32 @@ import type { Context } from "@netlify/edge-functions";
 const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-2.0-flash";
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 const MAX_HISTORY_MESSAGES = 30;
+const DEBUG_KEY_CHECK = Deno.env.get("DEBUG_GEMINI_KEY") === "true";
+
+let diagnosticRan = false;
+async function runKeyDiagnosticOnce() {
+  if (diagnosticRan || !DEBUG_KEY_CHECK) return;
+  diagnosticRan = true;
+
+  if (!GEMINI_API_KEY) {
+    console.error("[gemini-chat] GEMINI_API_KEY is undefined in this environment.");
+    return;
+  }
+  try {
+    const test = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "ping" }] }] }),
+      },
+    );
+    console.log(`[gemini-chat] diagnostic status: ${test.status}`);
+    if (!test.ok) console.error(await test.text());
+  } catch (err) {
+    console.error("[gemini-chat] diagnostic fetch failed:", err);
+  }
+}
 
 const SYSTEM_INSTRUCTION = {
   role: "user",
@@ -28,6 +54,8 @@ function jsonLine(obj: Record<string, unknown>): Uint8Array {
 }
 
 export default async (req: Request, _ctx: Context) => {
+  await runKeyDiagnosticOnce();
+
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
   }
