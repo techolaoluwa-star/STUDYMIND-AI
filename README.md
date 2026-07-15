@@ -70,4 +70,3 @@ netlify dev     # runs Vite + the edge function together, recommended
   are using a larger-context model.
 - Swap `GEMINI_MODEL` to any Gemini model id (e.g. `gemini-2.0-flash`,
   `gemini-1.5-pro`) without code changes.
-# STUDYMIND-AI

@@ -54,6 +54,18 @@ function jsonLine(obj: Record<string, unknown>): Uint8Array {
 }
 
 export default async (req: Request, _ctx: Context) => {
+  try {
+    return await handleRequest(req);
+  } catch (err) {
+    console.error("[gemini-chat] Unhandled error:", err);
+    return new Response(
+      JSON.stringify({ error: "Unexpected server error. Please try again." }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    );
+  }
+};
+
+async function handleRequest(req: Request): Promise<Response> {
   await runKeyDiagnosticOnce();
 
   if (req.method !== "POST") {
@@ -101,7 +113,8 @@ export default async (req: Request, _ctx: Context) => {
         ],
       }),
     });
-  } catch {
+  } catch (err) {
+    console.error("[gemini-chat] Upstream fetch failed:", err);
     return new Response(JSON.stringify({ error: "Could not reach Gemini. Please retry." }), {
       status: 502,
     });
@@ -109,6 +122,7 @@ export default async (req: Request, _ctx: Context) => {
 
   if (!upstream.ok || !upstream.body) {
     const detail = await upstream.text().catch(() => "");
+    console.error(`[gemini-chat] Gemini responded ${upstream.status}:`, detail);
     return new Response(
       JSON.stringify({ error: `Gemini request failed${detail ? `: ${detail.slice(0, 200)}` : "."}` }),
       { status: upstream.status || 502 },
@@ -149,7 +163,8 @@ export default async (req: Request, _ctx: Context) => {
           }
         }
         controller.enqueue(jsonLine({ done: true }));
-      } catch {
+      } catch (err) {
+        console.error("[gemini-chat] Stream loop error:", err);
         controller.enqueue(jsonLine({ error: "Stream interrupted. Please retry." }));
       } finally {
         controller.close();
@@ -164,6 +179,6 @@ export default async (req: Request, _ctx: Context) => {
       "Cache-Control": "no-cache",
     },
   });
-};
+}
 
 export const config = { path: "/.netlify/functions/gemini-chat" };
